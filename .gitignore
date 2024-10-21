@@ -1,0 +1,8 @@
+
+/data/exported_data
+.env
+.DS_Store
+*.log
+/data/reports
+/dist
+/nbpipeline/__pycache__

@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "nbpipeline"
+version = "0.1.0"
+description = "Execute ipython notebooks in a configured pipeline"
+authors = ["Artem Zaborskiy <compartia@gmail.com>"]
+readme = "README.md"
+package-mode = true
+
+[tool.poetry.dependencies]
+python = "^3.10"
+python-dotenv = "1.0.1"
+ipykernel = "^6.29.5"
+pyyaml = "^6.0.2"
+papermill = "^2.6.0"
+flask = "^3.0.3"
+schedule = "^1.2.2"
+nbconvert = "^7.16.4"
+
+
+[tool.poetry.scripts]
+nbpipeline = "nbpipeline.run:main"
+lint = "flake8"
+
+[tool.poetry.group.dev.dependencies]
+flake8 = "^7.1.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
