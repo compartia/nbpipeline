@@ -18,7 +18,7 @@ workspace_dir =   os.getenv('NPB_WORK_DIR', default_work_dir)
 
 def configure_logging():
     # Create a logger
-    logger = logging.getLogger()
+    logger = logging.getLogger(__name__)
     log_level = os.environ.get('NBP_LOG_LEVEL', 'INFO')
     file_log_level = os.environ.get('NBP_LOG_LEVEL_FILE', 'INFO')
     logger.setLevel(getattr(logging, log_level))
@@ -44,13 +44,13 @@ def configure_logging():
     # Add handlers to the logger
     logger.addHandler(console_handler)
     logger.addHandler(file_handler)
-
+    return logger
 
 # Call this function to configure logging
-configure_logging()
+logger = configure_logging()
 
 
-logging.info(f'{workspace_dir=}')
+logger.info(f'{workspace_dir=}')
 data_dir = workspace_dir / 'data'
 exported_data_dir = data_dir / 'exported_data'
  

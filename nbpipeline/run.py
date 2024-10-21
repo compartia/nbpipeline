@@ -1,11 +1,10 @@
 import papermill as pm
-from nbpipeline.config import data_dir
+from nbpipeline.config import data_dir, logger
 import schedule
 import time
 from flask import Flask, send_from_directory
 import os
 import threading
-import logging
 from nbconvert import HTMLExporter
 from nbconvert.writers import FilesWriter
 from nbformat import read
@@ -19,14 +18,8 @@ REPORTS_DIR = data_dir / 'reports'
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 notebooks_dir = data_dir / 'notebooks'
-logging.info(f'Notebooks directory: {notebooks_dir}')
-logging.info(f'Reports directory: {REPORTS_DIR}')
-
-#############################################
-
-#############################################
-
-
+logger.info(f'Notebooks directory: {notebooks_dir}')
+logger.info(f'Reports directory: {REPORTS_DIR}')
 
 #############################################
 
@@ -39,7 +32,7 @@ class NBPipeliner():
                        Defaults to PIPELINE_STAGES if not provided.
         """
         self.stages = stages
-        logging.info(f'Initialized NBPipeliner with stages: {self.stages}')
+        logger.info(f'Initialized NBPipeliner with stages: {self.stages}')
 
     def job(self):
         """Job to execute notebooks and handle errors."""
@@ -129,7 +122,7 @@ def make_html(input_notebook):
         writer.write(output, resources, str(output_html))
 
     except Exception as e:
-        logging.error(f"Error converting notebook to HTML: {e}")
+        logger.error(f"Error converting notebook to HTML: {e}")
         error_html = (
             "<html><body><h1>Error converting notebook to HTML</h1>"
             f"<pre>{traceback.format_exc()}</pre></body></html>"
@@ -149,10 +142,10 @@ def exec_note(script_name):
             log_output=True,
             cwd='notebooks'
         )
-        logging.info(f"Notebook {script_name} executed successfully.")
+        logger.info(f"Notebook {script_name} executed successfully.")
     except Exception as e:
-        logging.error(f"Error executing notebook {script_name}: {e}")
-        logging.exception(e)
+        logger.error(f"Error executing notebook {script_name}: {e}")
+        logger.exception(e)
         no_error = False
 
     make_html(out_file)
@@ -167,7 +160,6 @@ def serve_stage_results_html(html_name):
 def main():
     # job()
     
-
     __PIPELINE_STAGES = [  # (notebook_name, urls)
         ('sample_stage_1', 'stage1'),
         ('sample_stage_2', 'stage2'),    
