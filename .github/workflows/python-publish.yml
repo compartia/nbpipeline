@@ -27,7 +27,7 @@ jobs:
       - name: Upload Release Asset
         uses: actions/upload-artifact@v4
         with:
-           name: az/nbpipeline
+           name: nbpipeline
            path: dist/*.whl
 
 
