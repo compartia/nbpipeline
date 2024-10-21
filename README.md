@@ -1,0 +1,1 @@
+[![Python Package](https://github.com/compartia/nbpipeline/actions/workflows/python-publish.yml/badge.svg)](https://github.com/compartia/nbpipeline/actions/workflows/python-publish.yml)
