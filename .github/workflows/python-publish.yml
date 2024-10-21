@@ -19,8 +19,16 @@ jobs:
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: ${{ matrix.poetry-version }}
-      - name: View poetry --help
-        run: poetry build
+      - name: Build wheel
+         run: |
+           poetry install
+           poetry build
+
+      - name: Upload Release Asset
+        uses: actions/upload-artifact@v2
+        with:
+           name: az/nbpipeline
+           path: dist/*.whl
 
 
 
