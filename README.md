@@ -13,11 +13,10 @@
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Usage](#usage)
-- [Project Structure](#project-structure)
 - [Logging](#logging)
 - [Contributing](#contributing)
 - [License](#license)
-- [Contact](#contact)
+
 
 ## Features
 
