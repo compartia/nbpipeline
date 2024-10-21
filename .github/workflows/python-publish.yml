@@ -20,9 +20,9 @@ jobs:
         with:
           poetry-version: ${{ matrix.poetry-version }}
       - name: Build wheel
-         run: |
-           poetry install
-           poetry build
+        run: |
+          poetry install
+          poetry build
 
       - name: Upload Release Asset
         uses: actions/upload-artifact@v2
