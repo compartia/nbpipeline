@@ -18,8 +18,7 @@ import traceback
 REPORTS_DIR = data_dir / 'reports'
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
-notebooks_dir = data_dir / 'notebooks'
-logging.info(f'Notebooks directory: {notebooks_dir}')
+ 
 logging.info(f'Reports directory: {REPORTS_DIR}')
 
 #############################################
@@ -31,7 +30,7 @@ logging.info(f'Reports directory: {REPORTS_DIR}')
 #############################################
 
 class NBPipeliner():
-    def __init__(self, stages=None):
+    def __init__(self, stages, notebooks_dir):
         """
         Initialize the NBPipeliner with optional pipeline stages.
 
@@ -39,12 +38,13 @@ class NBPipeliner():
                        Defaults to PIPELINE_STAGES if not provided.
         """
         self.stages = stages
+        self.notebooks_dir = notebooks_dir
         logging.info(f'Initialized NBPipeliner with stages: {self.stages}')
 
     def job(self):
         """Job to execute notebooks and handle errors."""
         for notebook_name, _ in self.stages:
-            if not exec_note(notebook_name):
+            if not self.exec_note(notebook_name):
                 self.stop_scheduler.set()
                 break
     
@@ -109,6 +109,25 @@ class NBPipeliner():
 
         return html
 
+    def exec_note(self, script_name):
+        """Execute a Jupyter notebook and convert it to HTML."""
+        no_error = True
+        out_file = REPORTS_DIR / f'{script_name}.ipynb'
+        try:
+            pm.execute_notebook(
+                self.notebooks_dir / f'{script_name}.ipynb',
+                out_file,
+                log_output=True,
+                cwd='notebooks'
+            )
+            logging.info(f"Notebook {script_name} executed successfully.")
+        except Exception as e:
+            logging.error(f"Error executing notebook {script_name}: {e}")
+            logging.exception(e)
+            no_error = False
+
+        make_html(out_file)
+        return no_error
 
 def make_html(input_notebook):
     """Convert a Jupyter notebook to HTML."""
@@ -138,25 +157,7 @@ def make_html(input_notebook):
             f.write(error_html)
 
 
-def exec_note(script_name):
-    """Execute a Jupyter notebook and convert it to HTML."""
-    no_error = True
-    out_file = REPORTS_DIR / f'{script_name}.ipynb'
-    try:
-        pm.execute_notebook(
-            notebooks_dir / f'{script_name}.ipynb',
-            out_file,
-            log_output=True,
-            cwd='notebooks'
-        )
-        logging.info(f"Notebook {script_name} executed successfully.")
-    except Exception as e:
-        logging.error(f"Error executing notebook {script_name}: {e}")
-        logging.exception(e)
-        no_error = False
 
-    make_html(out_file)
-    return no_error
 
 
 
@@ -165,14 +166,12 @@ def serve_stage_results_html(html_name):
 
 
 def main():
-    # job()
-    
 
     __PIPELINE_STAGES = [  # (notebook_name, urls)
         ('sample_stage_1', 'stage1'),
         ('sample_stage_2', 'stage2'),    
     ]
-    x = NBPipeliner(__PIPELINE_STAGES)
+    x = NBPipeliner(__PIPELINE_STAGES, data_dir.parent/'notebooks')
     x.start()
 
 if __name__ == "__main__":
