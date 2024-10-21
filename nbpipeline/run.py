@@ -1,5 +1,5 @@
 import papermill as pm
-from nbpipeline.config import data_dir, notebooks_dir
+from nbpipeline.config import data_dir
 import schedule
 import time
 from flask import Flask, send_from_directory
@@ -18,13 +18,14 @@ import traceback
 REPORTS_DIR = data_dir / 'reports'
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
+notebooks_dir = data_dir / 'notebooks'
 logging.info(f'Notebooks directory: {notebooks_dir}')
 logging.info(f'Reports directory: {REPORTS_DIR}')
 
 #############################################
 PIPELINE_STAGES = [  # (notebook_name, urls)
     ('sample_stage_1', 'stage1'),
-    ('sample_stage_1', 'stage2'),    
+    ('sample_stage_2', 'stage2'),    
 ]
 #############################################
 
@@ -48,7 +49,7 @@ def generate_navigation_html():
     )
 
     html = (
-        "<html><body><h1>Rules engine</h1><ul>" +
+        "<html><body><h1>Logs</h1><ul>" +
         "".join(links) +
         "<h2>Scheduler Status</h2>" +
         scheduler_status +
@@ -138,14 +139,14 @@ def main():
     """Main function to set up the scheduler and start the Flask app."""
     app = Flask(__name__)
 
-    interval_minutes = int(os.environ.get('SCHEDULE_INTERVAL_MINUTES', 10))
+    interval_minutes = int(os.environ.get('NBP_DEFAULT_SCHEDULE_INTERVAL_MINUTES', 10))
     schedule.every(interval_minutes).minutes.do(job)
 
     scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
     scheduler_thread.start()
 
-    port = int(os.environ.get('RULES_ENGINE_PORT', 8088))
-    host = str(os.environ.get('RULES_ENGINE_HOST', '0.0.0.0'))
+    port = int(os.environ.get('NPB_SERVER_PORT', 8088))
+    host = str(os.environ.get('NPB_SERVER_HOST', '0.0.0.0'))
 
     _init_routing(app)
 

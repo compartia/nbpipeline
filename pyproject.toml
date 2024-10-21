@@ -19,7 +19,7 @@ nbconvert = "^7.16.4"
 
 [tool.poetry.scripts]
 nbpipeline = "nbpipeline.run:main"
-lint = "flake8"
+lint = "flake8:main"
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "^7.1.1"
