@@ -23,27 +23,28 @@ def configure_logging():
     file_log_level = os.environ.get('NBP_LOG_LEVEL_FILE', 'INFO')
     logger.setLevel(getattr(logging, log_level))
 
-    # Create formatters
-    _fs = '%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'
+    if not logger.handlers:
+        # Create formatters
+        _fs = '%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'
+        
+        console_formatter = logging.Formatter(_fs)
+        file_formatter = logging.Formatter(_fs)
     
-    console_formatter = logging.Formatter(_fs)
-    file_formatter = logging.Formatter(_fs)
- 
-    # Create console handler and set level to info
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    console_handler.setFormatter(console_formatter)
+        # Create console handler and set level to info
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        console_handler.setFormatter(console_formatter)
 
-    # Create file handler and set level to info
-    log_file = workspace_dir / 'logfile.log'
-    file_handler = RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=5)    
-    file_handler.setLevel(getattr(logging, file_log_level))
+        # Create file handler and set level to info
+        log_file = workspace_dir / 'logfile.log'
+        file_handler = RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=5)    
+        file_handler.setLevel(getattr(logging, file_log_level))
 
-    file_handler.setFormatter(file_formatter)
+        file_handler.setFormatter(file_formatter)
 
-    # Add handlers to the logger
-    logger.addHandler(console_handler)
-    logger.addHandler(file_handler)
+        # Add handlers to the logger
+        logger.addHandler(console_handler)
+        logger.addHandler(file_handler)
     return logger
 
 # Call this function to configure logging
