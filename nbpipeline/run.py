@@ -38,10 +38,18 @@ class NBPipeliner():
         logger.info(f'Initialized NBPipeliner with stages: {self.stages}')
 
 
+        for notebook_name, _ in self.stages:
+            notebook_path = self.notebooks_dir / f"{notebook_name}.ipynb"
+            if not notebook_path.exists():
+                logger.fatal(f"Notebook file {notebook_path} does not exist.")
+                raise FileNotFoundError(f"Notebook file {notebook_path} does not exist.")
+
+
     def job(self):
         """Job to execute notebooks and handle errors."""
         for notebook_name, _ in self.stages:
             if not self.exec_note(notebook_name):
+                # TODO: style of error handling must be configurable
                 self.stop_scheduler.set()
                 break
     
@@ -60,7 +68,11 @@ class NBPipeliner():
             time.sleep(1)
 
     def start(self):
+        
         self.stop_scheduler = threading.Event()
+        
+        self.job()
+
 
         interval_minutes = int(os.environ.get('NBP_DEFAULT_SCHEDULE_INTERVAL_MINUTES', 10))
         schedule.every(interval_minutes).minutes.do(self.job)
@@ -152,8 +164,6 @@ def make_html(input_notebook):
         )
         with open(f"{output_html}.html", 'w', encoding='utf-8') as f:
             f.write(error_html)
-
-
 
 
 
