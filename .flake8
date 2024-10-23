@@ -2,4 +2,4 @@
 max-line-length = 120
 exclude = .git,__pycache__,docs/source/conf.py,old,build,dist,.venv 
 
-ignore = W291,W293,W504,E222
+ignore = W291,W293,W504,E222,E303,E302

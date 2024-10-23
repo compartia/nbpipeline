@@ -1,60 +1,71 @@
 import papermill as pm
-from nbpipeline.config import data_dir
+from nbpipeline.config import data_dir, logger
 import schedule
 import time
 from flask import Flask, send_from_directory
 import os
 import threading
-import logging
 from nbconvert import HTMLExporter
 from nbconvert.writers import FilesWriter
 from nbformat import read
 import io
 import traceback
+import datetime as dt
 
  
-#############################################
-# Directory setup
-REPORTS_DIR = data_dir / 'reports'
-REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-
-notebooks_dir = data_dir / 'notebooks'
-logging.info(f'Notebooks directory: {notebooks_dir}')
-logging.info(f'Reports directory: {REPORTS_DIR}')
+ 
 
 #############################################
 
-#############################################
-
-
-
-#############################################
+def now():
+    return dt.datetime.now()
 
 class NBPipeliner():
-    def __init__(self, stages=None):
+    def __init__(self, stages, notebooks_dir):
         """
-        Initialize the NBPipeliner with optional pipeline stages.
+        Initialize the NBPipeliner with the specified pipeline stages and notebooks directory.
 
-        :param stages: List of tuples containing notebook names and URLs. 
-                       Defaults to PIPELINE_STAGES if not provided.
+        :param stages: A list of tuples, where each tuple contains a notebook name and its corresponding URL.
+        :param notebooks_dir: The directory path where the notebooks are stored.
         """
+        self.stop_scheduler = None
+        self.scheduler_thread = None
+         
+        self.reports_dir = data_dir / 'reports'
+        self.reports_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f'Reports directory: {self.reports_dir}')
         self.stages = stages
-        logging.info(f'Initialized NBPipeliner with stages: {self.stages}')
+
+        self.notebooks_dir = notebooks_dir
+        logger.info(f'Initialized NBPipeliner with stages: {self.stages}')
+
+        self.status = {}
+
+        for notebook_name, _ in self.stages:
+            notebook_path = self.notebooks_dir / f"{notebook_name}.ipynb"
+            if not notebook_path.exists():
+                logger.fatal(f"Notebook file {notebook_path} does not exist.")
+                raise FileNotFoundError(f"Notebook file {notebook_path} does not exist.")
+
 
     def job(self):
         """Job to execute notebooks and handle errors."""
         for notebook_name, _ in self.stages:
-            if not exec_note(notebook_name):
+            logger.info(f"Starting execution of notebook: {notebook_name}")
+            if not self.exec_note(notebook_name):
+                # TODO: style of error handling must be configurable
                 self.stop_scheduler.set()
                 break
     
     def _init_routing(self):
-        self.app.add_url_rule('/', endpoint='home', view_func=self.generate_navigation_html)
+        self.app.add_url_rule('/', endpoint='home', view_func=self.generate_task_list_html)
 
         for notebook_name, url in self.stages:
-            self.app.add_url_rule(f'/{url}', endpoint=notebook_name,
-                            view_func=lambda notebook_name=notebook_name: serve_stage_results_html(notebook_name))
-
+            self.app.add_url_rule(
+                f'/{url}', 
+                endpoint=notebook_name,
+                view_func=lambda notebook_name=notebook_name: self.serve_stage_results_html(notebook_name)
+            )
 
     def run_scheduler(self):
         """Run the scheduled jobs."""
@@ -62,20 +73,24 @@ class NBPipeliner():
             schedule.run_pending()
             time.sleep(1)
 
+    
     def start(self):
-        self.stop_scheduler = threading.Event()
-
-        interval_minutes = int(os.environ.get('NBP_DEFAULT_SCHEDULE_INTERVAL_MINUTES', 10))
-        schedule.every(interval_minutes).minutes.do(self.job)
-
-        scheduler_thread = threading.Thread(target=self.run_scheduler, daemon=True)
-        scheduler_thread.start()
-
-
-        self.run_flask()
         
 
-    def run_flask(self):
+        self.stop_scheduler = threading.Event()        
+        # self.job()
+
+        interval_minutes = int(os.environ.get('NBP_DEFAULT_SCHEDULE_INTERVAL_MINUTES', 10))
+        logger.debug(f"Scheduler interval set to {interval_minutes} minutes.")
+        schedule.every(interval_minutes).minutes.do(self.job)
+
+        self.scheduler_thread = threading.Thread(target=self.run_scheduler, daemon=True)        
+        self.scheduler_thread.start()
+        
+        self._run_flask()
+        
+
+    def _run_flask(self):
         """Main function to set up the scheduler and start the Flask app."""
         self.app = Flask(__name__)
     
@@ -85,18 +100,20 @@ class NBPipeliner():
         self._init_routing()
         self.app.run(host=host, port=port, use_reloader=False)
 
-    def generate_navigation_html(self):
+    def generate_task_list_html(self):
         """Generate a simple HTML with a list of links for navigation based on PIPELINE_STAGES."""
         links = [
-            f'<li><a href="/{url}">{notebook_name.replace("_", " ").title()}</a></li>'
+            f'<li><a href="/{url}">{notebook_name}</a> -- {self.status.get(notebook_name)}</li>'
             for notebook_name, url in self.stages if url
         ]
 
         scheduler_status = (
             "<p>The scheduler is stopped, see error logs</p>"
             if self.stop_scheduler.is_set()
-            else f"<p>The scheduler is running, next run scheduled to "
+            else (
+                f"<p>The scheduler is running, next run scheduled to "
                 f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(schedule.next_run().timestamp()))}</p>"
+            )
         )
 
         html = (
@@ -109,71 +126,73 @@ class NBPipeliner():
 
         return html
 
+    
+    def exec_note(self, script_name):
+        self.status[script_name] = 'pending'
+        """Execute a Jupyter notebook and convert it to HTML."""
+        no_error = True
+        out_file = self.reports_dir / f'{script_name}.ipynb'
+        try:
+            self.status[script_name] = 'running', now()
+            pm.execute_notebook(
+                self.notebooks_dir / f'{script_name}.ipynb',
+                out_file,
+                log_output=True,
+                cwd='notebooks'
+            )
+            logger.info(f"Notebook {script_name} executed successfully.")
+            self.status[script_name] = 'complete', now()
+        except Exception as e:
+            self.status[script_name] = 'errored', now()
+            logger.error(f"Error executing notebook {script_name}: {e}")
+            logger.exception(e)
+            no_error = False
 
-def make_html(input_notebook):
-    """Convert a Jupyter notebook to HTML."""
-    try:
-        output_html = REPORTS_DIR / f'{input_notebook.stem}'
+        self.make_html(out_file)
+        return no_error
+    
 
-        # Read the notebook
-        with open(input_notebook, 'r', encoding='utf-8') as f:
-            notebook_content = f.read()
+    def serve_stage_results_html(self, html_name):
+        return send_from_directory(self.reports_dir, f'{html_name}.html')
 
-        # Convert the notebook to HTML
-        exporter = HTMLExporter(template_name='lab')
-        exporter.exclude_input = True
-        output, resources = exporter.from_notebook_node(read(io.StringIO(notebook_content), as_version=4))
+    def make_html(self, input_notebook):
+        """Convert a Jupyter notebook to HTML."""
+        try:
+            output_html = self.reports_dir / f'{input_notebook.stem}'
 
-        # Write the HTML output to a file
-        writer = FilesWriter()
-        writer.write(output, resources, str(output_html))
+            # Read the notebook
+            with open(input_notebook, 'r', encoding='utf-8') as f:
+                notebook_content = f.read()
 
-    except Exception as e:
-        logging.error(f"Error converting notebook to HTML: {e}")
-        error_html = (
-            "<html><body><h1>Error converting notebook to HTML</h1>"
-            f"<pre>{traceback.format_exc()}</pre></body></html>"
-        )
-        with open(f"{output_html}.html", 'w', encoding='utf-8') as f:
-            f.write(error_html)
+            # Convert the notebook to HTML
+            exporter = HTMLExporter(template_name='lab')
+            exporter.exclude_input = True
+            output, resources = exporter.from_notebook_node(read(io.StringIO(notebook_content), as_version=4))
 
+            # Write the HTML output to a file
+            writer = FilesWriter()
+            writer.write(output, resources, str(output_html))
 
-def exec_note(script_name):
-    """Execute a Jupyter notebook and convert it to HTML."""
-    no_error = True
-    out_file = REPORTS_DIR / f'{script_name}.ipynb'
-    try:
-        pm.execute_notebook(
-            notebooks_dir / f'{script_name}.ipynb',
-            out_file,
-            log_output=True,
-            cwd='notebooks'
-        )
-        logging.info(f"Notebook {script_name} executed successfully.")
-    except Exception as e:
-        logging.error(f"Error executing notebook {script_name}: {e}")
-        logging.exception(e)
-        no_error = False
+        except Exception as e:
+            logger.error(f"Error converting notebook to HTML: {e}")
+            error_html = (
+                "<html><body><h1>Error converting notebook to HTML</h1>"
+                f"<pre>{traceback.format_exc()}</pre></body></html>"
+            )
+            with open(f"{output_html}.html", 'w', encoding='utf-8') as f:
+                f.write(error_html)
 
-    make_html(out_file)
-    return no_error
-
-
-
-def serve_stage_results_html(html_name):
-    return send_from_directory(REPORTS_DIR, f'{html_name}.html')
+    
 
 
 def main():
-    # job()
-    
-
     __PIPELINE_STAGES = [  # (notebook_name, urls)
         ('sample_stage_1', 'stage1'),
         ('sample_stage_2', 'stage2'),    
     ]
-    x = NBPipeliner(__PIPELINE_STAGES)
+    x = NBPipeliner(__PIPELINE_STAGES, data_dir.parent / 'notebooks')
     x.start()
+
 
 if __name__ == "__main__":
     main()
