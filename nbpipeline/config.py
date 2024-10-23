@@ -47,6 +47,7 @@ def configure_logging():
         logger.addHandler(file_handler)
     return logger
 
+
 # Call this function to configure logging
 logger = configure_logging()
 

@@ -61,9 +61,11 @@ class NBPipeliner():
         self.app.add_url_rule('/', endpoint='home', view_func=self.generate_task_list_html)
 
         for notebook_name, url in self.stages:
-            self.app.add_url_rule(f'/{url}', endpoint=notebook_name,
-                            view_func=lambda notebook_name=notebook_name: self.serve_stage_results_html(notebook_name))
-
+            self.app.add_url_rule(
+                f'/{url}', 
+                endpoint=notebook_name,
+                view_func=lambda notebook_name=notebook_name: self.serve_stage_results_html(notebook_name)
+            )
 
     def run_scheduler(self):
         """Run the scheduled jobs."""
@@ -108,8 +110,10 @@ class NBPipeliner():
         scheduler_status = (
             "<p>The scheduler is stopped, see error logs</p>"
             if self.stop_scheduler.is_set()
-            else f"<p>The scheduler is running, next run scheduled to "
+            else (
+                f"<p>The scheduler is running, next run scheduled to "
                 f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(schedule.next_run().timestamp()))}</p>"
+            )
         )
 
         html = (
@@ -124,12 +128,12 @@ class NBPipeliner():
 
     
     def exec_note(self, script_name):
-        self.status[script_name]='pending'
+        self.status[script_name] = 'pending'
         """Execute a Jupyter notebook and convert it to HTML."""
         no_error = True
         out_file = self.reports_dir / f'{script_name}.ipynb'
         try:
-            self.status[script_name]='running', now()
+            self.status[script_name] = 'running', now()
             pm.execute_notebook(
                 self.notebooks_dir / f'{script_name}.ipynb',
                 out_file,
@@ -137,9 +141,9 @@ class NBPipeliner():
                 cwd='notebooks'
             )
             logger.info(f"Notebook {script_name} executed successfully.")
-            self.status[script_name]='complete', now()
+            self.status[script_name] = 'complete', now()
         except Exception as e:
-            self.status[script_name]='errored', now()
+            self.status[script_name] = 'errored', now()
             logger.error(f"Error executing notebook {script_name}: {e}")
             logger.exception(e)
             no_error = False
@@ -186,8 +190,9 @@ def main():
         ('sample_stage_1', 'stage1'),
         ('sample_stage_2', 'stage2'),    
     ]
-    x = NBPipeliner(__PIPELINE_STAGES, data_dir.parent/'notebooks')
+    x = NBPipeliner(__PIPELINE_STAGES, data_dir.parent / 'notebooks')
     x.start()
+
 
 if __name__ == "__main__":
     main()

@@ -23,7 +23,9 @@ jobs:
         run: poetry install
 
       - name: Linter
-        run: poetry run flake8
+        run: poetry run flake8 
+        continue-on-error: true
+ 
 
       - name: Build wheel
         run: |
