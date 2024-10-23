@@ -18,6 +18,13 @@ jobs:
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: '1.8.4'
+
+      - name: Install
+        run: poetry install
+
+      - name: Linter
+        run: poetry run flake8
+
       - name: Build wheel
         run: |
           poetry install
