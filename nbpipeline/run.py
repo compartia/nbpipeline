@@ -1,5 +1,5 @@
 import papermill as pm
-from config import data_dir, logger, project_dir
+from nbpipeline.config import data_dir, logger, project_dir
 import schedule
 import time
 from flask import Flask, send_from_directory
