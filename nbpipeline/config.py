@@ -6,9 +6,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 
+project_dir = Path(__file__).parent.parent
 
 default_work_dir = Path.cwd().parent 
 workspace_dir =  Path(os.getenv('NPB_WORK_DIR', default_work_dir))
+workspace_dir.mkdir(parents=True, exist_ok=True)
 
 
 def configure_logging():
@@ -49,6 +51,3 @@ logger = configure_logging()
 
 logger.info(f'{workspace_dir=}')
 data_dir = workspace_dir / 'data'
-exported_data_dir = data_dir / 'exported_data'
- 
-exported_data_dir.mkdir(parents=True, exist_ok=True)

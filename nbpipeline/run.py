@@ -1,5 +1,5 @@
 import papermill as pm
-from nbpipeline.config import data_dir, logger
+from config import data_dir, logger, project_dir
 import schedule
 import time
 from flask import Flask, send_from_directory
@@ -15,9 +15,12 @@ import datetime as dt
 
 
 #############################################
-
+DDATE_FORMAT = '%d %B, %Y   %H:%M:%S %Z'
 def now():
     return dt.datetime.now()
+
+def nowstr():
+    return now().strftime(DDATE_FORMAT)
 
 class NBPipeliner():
     def __init__(self, stages, notebooks_dir):
@@ -76,7 +79,7 @@ class NBPipeliner():
     def start(self):
         
         self.stop_scheduler = threading.Event()        
-        if os.environ.get('NBP_EXEC_JOBS_BEFORE_SCHEDULE', 'False').lower () == 'true':
+        if os.environ.get('NBP_EXEC_JOBS_BEFORE_SCHEDULE', 'False').lower() == 'true':
             logger.warn('NBP_EXEC_JOBS_BEFORE_SCHEDULE')
             self.job()
 
@@ -113,7 +116,7 @@ class NBPipeliner():
             if self.stop_scheduler.is_set()
             else (
                 f"<p>The scheduler is running, next run scheduled to "
-                f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(schedule.next_run().timestamp()))}</p>"
+                f"{time.strftime(DDATE_FORMAT, time.localtime(schedule.next_run().timestamp()))}</p>"
             )
         )
 
@@ -134,7 +137,7 @@ class NBPipeliner():
         no_error = True
         out_file = self.reports_dir / f'{script_name}.ipynb'
         try:
-            self.status[script_name] = 'running', now()
+            self.status[script_name] = 'running', nowstr()
             pm.execute_notebook(
                 self.notebooks_dir / f'{script_name}.ipynb',
                 out_file,
@@ -142,9 +145,9 @@ class NBPipeliner():
                 cwd='notebooks'
             )
             logger.info(f"Notebook {script_name} executed successfully.")
-            self.status[script_name] = 'complete', now()
+            self.status[script_name] = 'complete', nowstr()
         except Exception as e:
-            self.status[script_name] = 'errored', now()
+            self.status[script_name] = 'errored', nowstr()
             logger.error(f"Error executing notebook {script_name}: {e}")
             logger.exception(e)
             no_error = False
@@ -191,7 +194,7 @@ def main():
         ('sample_stage_1', 'stage1'),
         ('sample_stage_2', 'stage2'),    
     ]
-    x = NBPipeliner(__PIPELINE_STAGES, data_dir.parent / 'notebooks')
+    x = NBPipeliner(__PIPELINE_STAGES, project_dir / 'notebooks')
     x.start()
 
 
