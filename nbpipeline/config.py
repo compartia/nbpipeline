@@ -8,12 +8,7 @@ load_dotenv()
 
 
 default_work_dir = Path.cwd().parent 
-if "__file__" in globals():
-    default_work_dir = Path(__file__).parent.parent
-    print("default_work_dir=", default_work_dir)
-
-
-workspace_dir =   os.getenv('NPB_WORK_DIR', default_work_dir)
+workspace_dir =  Path(os.getenv('NPB_WORK_DIR', default_work_dir))
 
 
 def configure_logging():

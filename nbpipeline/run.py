@@ -12,8 +12,7 @@ import io
 import traceback
 import datetime as dt
 
- 
- 
+
 
 #############################################
 
@@ -76,12 +75,14 @@ class NBPipeliner():
     
     def start(self):
         
-
         self.stop_scheduler = threading.Event()        
-        # self.job()
+        if os.environ.get('NBP_EXEC_JOBS_BEFORE_SCHEDULE', 'False').lower () == 'true':
+            logger.warn('NBP_EXEC_JOBS_BEFORE_SCHEDULE')
+            self.job()
 
         interval_minutes = int(os.environ.get('NBP_DEFAULT_SCHEDULE_INTERVAL_MINUTES', 10))
-        logger.debug(f"Scheduler interval set to {interval_minutes} minutes.")
+        logger.info(f"Scheduler interval set to {interval_minutes} minutes.")
+
         schedule.every(interval_minutes).minutes.do(self.job)
 
         self.scheduler_thread = threading.Thread(target=self.run_scheduler, daemon=True)        
