@@ -13,9 +13,9 @@ import traceback
 import datetime as dt
 
 
-
 #############################################
 DDATE_FORMAT = '%d %B, %Y   %H:%M:%S %Z'
+
 def now():
     return dt.datetime.now()
 
@@ -41,7 +41,7 @@ class NBPipeliner():
         self.notebooks_dir = notebooks_dir
         logger.info(f'Initialized NBPipeliner with stages: {self.stages}')
 
-        self.status = {}
+        self._status = {}
 
         for notebook_name, _ in self.stages:
             notebook_path = self.notebooks_dir / f"{notebook_name}.ipynb"
@@ -107,7 +107,7 @@ class NBPipeliner():
     def generate_task_list_html(self):
         """Generate a simple HTML with a list of links for navigation based on PIPELINE_STAGES."""
         links = [
-            f'<li><a href="/{url}">{notebook_name}</a> -- {self.status.get(notebook_name)}</li>'
+            f'<li><a href="/{url}">{notebook_name}</a> -- {self.ss_html(notebook_name)}</li>'
             for notebook_name, url in self.stages if url
         ]
 
@@ -130,24 +130,30 @@ class NBPipeliner():
 
         return html
 
+    def ss(self, script_name, name=None):        
+        self._status[script_name] = name, nowstr()
+
+    def ss_html(self, key):
+        return ' '.join(self._status.get(key, ['','']))
+
     
     def exec_note(self, script_name):
-        self.status[script_name] = 'pending'
+        self.ss(script_name, 'pending')
         """Execute a Jupyter notebook and convert it to HTML."""
         no_error = True
         out_file = self.reports_dir / f'{script_name}.ipynb'
         try:
-            self.status[script_name] = 'running', nowstr()
+            self.ss(script_name, 'running' )            
             pm.execute_notebook(
                 self.notebooks_dir / f'{script_name}.ipynb',
                 out_file,
                 log_output=True,
                 cwd='notebooks'
             )
-            logger.info(f"Notebook {script_name} executed successfully.")
-            self.status[script_name] = 'complete', nowstr()
-        except Exception as e:
-            self.status[script_name] = 'errored', nowstr()
+            logger.info(f"Notebook {script_name} executed successfully.")            
+            self.ss(script_name, 'complete')
+        except Exception as e:            
+            self.ss(script_name, 'errored')
             logger.error(f"Error executing notebook {script_name}: {e}")
             logger.exception(e)
             no_error = False
@@ -199,4 +205,5 @@ def main():
 
 
 if __name__ == "__main__":
+    logger.error(("-"*10) +nowstr())
     main()
