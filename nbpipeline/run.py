@@ -13,6 +13,7 @@ import traceback
 import datetime as dt
 
 
+
 #############################################
 DDATE_FORMAT = '%d %B, %Y   %H:%M:%S %Z'
 
@@ -52,9 +53,14 @@ class NBPipeliner():
 
     def job(self):
         """Job to execute notebooks and handle errors."""
+
+
+        NBP_STOP_ON_ERROR = os.environ.get('NBP_STOP_ON_ERROR', 'False').lower() == 'true'
+        
         for notebook_name, _ in self.stages:
             logger.info(f"Starting execution of notebook: {notebook_name}")
-            if not self.exec_note(notebook_name):
+            has_errors = self.exec_note(notebook_name)
+            if has_errors and NBP_STOP_ON_ERROR:            
                 # TODO: style of error handling must be configurable
                 self.stop_scheduler.set()
                 break
