@@ -89,17 +89,26 @@ class NBPipeliner():
             logger.warning('NBP_EXEC_JOBS_BEFORE_SCHEDULE')
             self.job()
 
-        _interval_minutes_f = float(os.environ.get('NBP_DEFAULT_SCHEDULE_INTERVAL_MINUTES', 10))
-        logger.warning(f'NBP_DEFAULT_SCHEDULE_INTERVAL_MINUTES={_interval_minutes_f}')
-        interval_seconds = int(_interval_minutes_f * 60.0) if _interval_minutes_f < 1 else None
-        interval_minutes = int(_interval_minutes_f) if _interval_minutes_f >= 1 else None        
+        _interval_minutes_f = os.environ.get('NBP_DEFAULT_SCHEDULE_INTERVAL_MINUTES', '10')
+        if ':' in _interval_minutes_f:
+            logger.warning(f'NBP_DEFAULT_SCHEDULE_INTERVAL_MINUTES={_interval_minutes_f}')
 
-        if interval_seconds:
-            logger.warning(f"Scheduler interval set to {interval_seconds} second(s).")
-            schedule.every(interval_seconds).seconds.do(self.job)
-        elif interval_minutes:
+            minutes_str, seconds_str = _interval_minutes_f.split(':', 1)
+            interval_minutes = int(minutes_str)
+            interval_seconds = int(seconds_str)
+
+            total_interval_seconds = interval_minutes * 60 + interval_seconds
+            logger.warning(f"Scheduler interval set to {total_interval_seconds} second(s).")
+            ####### -- Seconds
+            schedule.every(total_interval_seconds).seconds.do(self.job)
+            #######
+
+        else:
+            interval_minutes = int(float(_interval_minutes_f))
             logger.info(f"Scheduler interval set to {interval_minutes} minute(s).")
+            ####### - Minutes
             schedule.every(interval_minutes).minutes.do(self.job)
+            #######
 
         self.scheduler_thread = threading.Thread(target=self.run_scheduler, daemon=True)
         self.scheduler_thread.start()
