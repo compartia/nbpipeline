@@ -37,7 +37,7 @@
 
 ```bash
 git clone https://github.com/compartia/nbpipeline.git
-cd nbpipeliner
+cd nbpipeline
 ```
 
 ### 2. **Install Dependencies**
